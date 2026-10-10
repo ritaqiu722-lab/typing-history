@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>英打遊戲｜版本四</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --ink: #1d2733;
+      --muted: #5d6b7a;
+      --line: #d9e0e8;
+      --accent: #2557d6;
+      --accent-ink: #ffffff;
+      --accent-soft: #e8eefc;
+      --key: #eef1f5;
+      --key-dim: #f5f7fa;
+      --bad: #d6352f;
+      --bad-soft: #fde8e7;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #11161d;
+        --card: #1a212b;
+        --ink: #e8edf3;
+        --muted: #9aa8b8;
+        --line: #2b3542;
+        --accent: #7ba3ff;
+        --accent-ink: #0d1626;
+        --accent-soft: #212c44;
+        --key: #232c38;
+        --key-dim: #1a212b;
+        --bad: #ff7b74;
+        --bad-soft: #3a1f1e;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+      line-height: 1.7;
+    }
+
+    .wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 20px 56px;
+    }
+
+    .back {
+      display: inline-block;
+      margin-bottom: 20px;
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .back:hover { text-decoration: underline; }
+    .back:focus-visible,
+    button:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 2rem;
+      letter-spacing: 0.02em;
+    }
+    .lead {
+      margin: 0 0 20px;
+      color: var(--muted);
+    }
+
+    .howto {
+      margin: 0 0 24px;
+      padding-left: 1.4em;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    /* 設定區 */
+    .settings-title {
+      margin: 0 0 14px;
+      font-size: 1.1rem;
+    }
+    .setting { margin-bottom: 16px; }
+    .setting:last-child { margin-bottom: 0; }
+    .setting-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      font-weight: 600;
+    }
+    .setting-head output {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    input[type="range"] {
+      display: block;
+      width: 100%;
+      margin: 8px 0 2px;
+      accent-color: var(--accent);
+    }
+    input[type="range"]:disabled { opacity: 0.5; }
+    .scale {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .check {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .check input {
+      width: 20px;
+      height: 20px;
+      margin: 4px 0 0;
+      flex: none;
+      accent-color: var(--accent);
+    }
+    .check small {
+      display: block;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .locked-note {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    /* 狀態列 */
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .hud-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .hud-item .num {
+      font-size: clamp(1.4rem, 5vw, 2rem);
+      font-weight: 700;
+      line-height: 1.2;
+      font-variant-numeric: tabular-nums;
+    }
+    .hud-item .num.pop { animation: pop 0.18s ease-out; }
+    @keyframes pop {
+      from { transform: scale(1.25); }
+      to { transform: scale(1); }
+    }
+    .hud-item:last-child { text-align: right; }
+
+    .status {
+      min-height: 1.7em;
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .status.bad { color: var(--bad); }
+
+    /* 掉落區 */
+    .field {
+      position: relative;
+      height: clamp(260px, 45vh, 380px);
+      overflow: hidden;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+    .ground {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 14px;
+      background: var(--accent-soft);
+      border-top: 2px solid var(--accent);
+    }
+    .faller {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      min-width: 1.5em;
+      padding: 0 12px;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: clamp(2.4rem, 9vw, 3.6rem);
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: center;
+      color: var(--accent);
+      background: var(--card);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      transform: translate(-50%, 0);
+    }
+    .faller .glyph { display: inline-block; }
+    .faller.miss {
+      color: var(--bad);
+      background: var(--bad-soft);
+      border-color: var(--bad);
+    }
+    .faller.hit { animation: fade 0.3s ease-out forwards; }
+    .faller.hit .glyph { animation: grow 0.3s ease-out forwards; }
+    @keyframes fade { to { opacity: 0; } }
+    @keyframes grow { to { transform: scale(1.5); } }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 16px;
+      text-align: center;
+      background: var(--card);
+      opacity: 0.97;
+    }
+    .overlay .big {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .overlay p { margin: 0; color: var(--muted); }
+    .results {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 28px;
+      margin: 8px 0;
+      text-align: left;
+    }
+    .results div { display: flex; justify-content: space-between; gap: 14px; }
+    .results dt { color: var(--muted); }
+    .results dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .results .main { grid-column: 1 / -1; font-size: 1.2rem; }
+
+    /* 鍵盤 */
+    .keyboard {
+      --k: clamp(18px, 6vw, 52px);
+      --gap: clamp(2px, 0.6vw, 6px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--gap);
+      margin-top: 14px;
+      padding: clamp(6px, 2vw, 16px);
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      user-select: none;
+      overflow-x: auto;
+    }
+    .krow { display: flex; gap: var(--gap); }
+    .krow.r2 { margin-left: calc(var(--k) * 0.5); }
+    .krow.r3 { margin-left: calc(var(--k) * 1.5); }
+
+    .key {
+      width: var(--k);
+      height: var(--k);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(0.7rem, 2.4vw, 1.15rem);
+      font-weight: 600;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      color: var(--muted);
+      background: var(--key-dim);
+      border: 1px solid var(--line);
+      border-bottom-width: 3px;
+      border-radius: 8px;
+      opacity: 0.6;
+      transition: transform 0.06s, background 0.1s, border-color 0.1s;
+    }
+    .key.play {
+      opacity: 1;
+      color: var(--ink);
+      background: var(--key);
+      border-color: var(--accent);
+    }
+    .key.down {
+      color: var(--accent-ink);
+      background: var(--accent);
+      border-color: var(--accent);
+      transform: translateY(2px);
+      border-bottom-width: 1px;
+    }
+    .key.bad {
+      color: var(--bad);
+      background: var(--bad-soft);
+      border-color: var(--bad);
+      opacity: 1;
+    }
+    .space {
+      width: calc(var(--k) * 6);
+      height: calc(var(--k) * 0.7);
+      margin-top: 2px;
+      background: var(--key-dim);
+      border: 1px solid var(--line);
+      border-bottom-width: 3px;
+      border-radius: 8px;
+      opacity: 0.6;
+    }
+
+    /* 按鈕 */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 22px;
+      font: inherit;
+      font-weight: 600;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid transparent;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    button.primary { color: var(--accent-ink); background: var(--accent); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button:not(:disabled):hover { border-color: var(--accent); }
+
+    .hint {
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    footer {
+      margin-top: 32px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 520px) {
+      .panel { padding: 16px; }
+      .results { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .key { transition: none; }
+      .hud-item .num.pop,
+      .faller.hit,
+      .faller.hit .glyph { animation: none; }
+      .faller.hit { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <a class="back" href="../index.html">返回入口首頁</a>
+
+    <h1>英打遊戲　版本四</h1>
+    <p class="lead">這一版練習中排的十個鍵：A S D F G H J K L ;（分號）。字元會從上方掉下來，要在落地前按對它。</p>
+
+    <ol class="howto">
+      <li>用實體鍵盤，先切換成英文輸入法。</li>
+      <li>看到字元掉下來，按下相同的按鍵，就會消失並得 1 分。</li>
+      <li>每回合十題。沒按到也沒關係，不會扣分，直接進入下一題。</li>
+    </ol>
+
+    <section class="panel" aria-label="遊戲設定">
+      <h2 class="settings-title">遊戲設定</h2>
+
+      <div class="setting">
+        <div class="setting-head">
+          <label for="speed">每個字母落地時間</label>
+          <output id="speed-out" for="speed">12 秒</output>
+        </div>
+        <input type="range" id="speed" min="3" max="14" step="1" value="12" autocomplete="off" aria-describedby="speed-help">
+        <div class="scale" id="speed-help">
+          <span>3 秒（快）</span>
+          <span>14 秒（慢）</span>
+        </div>
+      </div>
+
+      <div class="setting">
+        <label class="check" for="ramp">
+          <input type="checkbox" id="ramp" autocomplete="off">
+          <span>
+            漸進加速
+            <small>每答對 3 題，落地時間縮短 1 秒，最快 3 秒。</small>
+          </span>
+        </label>
+      </div>
+
+      <p class="locked-note" id="locked-note" hidden>遊戲進行中無法更改設定。按「重新開始」可以回到設定。</p>
+    </section>
+
+    <section class="panel" aria-label="遊戲區">
+      <div class="hud">
+        <div class="hud-item">
+          <p>題數</p>
+          <div class="num" id="hud-q">0 / 10</div>
+        </div>
+        <div class="hud-item">
+          <p>落地時間</p>
+          <div class="num" id="hud-time">12 秒</div>
+        </div>
+        <div class="hud-item">
+          <p>分數</p>
+          <div class="num" id="hud-score">0</div>
+        </div>
+      </div>
+
+      <p class="status" id="status" role="status" aria-live="polite">調整設定後，按「開始」。</p>
+
+      <div class="field" id="field">
+        <div class="faller" id="faller" hidden aria-hidden="true"><span class="glyph" id="glyph"></span></div>
+        <div class="ground"></div>
+        <div class="overlay" id="overlay"></div>
+      </div>
+
+      <div class="keyboard" id="keyboard" aria-label="英文鍵盤"></div>
+
+      <div class="controls">
+        <button type="button" class="primary" id="btn-start">開始</button>
+        <button type="button" id="btn-pause" disabled>暫停</button>
+        <button type="button" id="btn-resume" disabled>繼續</button>
+        <button type="button" id="btn-restart" disabled>重新開始</button>
+      </div>
+
+      <p class="hint">長按按鍵只會算一次，放開後才能再按。離開這個視窗時，遊戲會自動暫停。</p>
+    </section>
+
+    <footer>數位科技概論 課程作品</footer>
+  </main>
+
+  <script>
+    (function () {
+      var TOTAL = 10;               // 每回合題數
+      var GROUND = 14;              // 地面高度（要和 CSS 的 .ground 一致）
+      var GAP_HIT = 0.35;           // 答對後，下一題出現前的等待秒數
+      var GAP_MISS = 0.8;           // 落地後，下一題出現前的等待秒數
+      var ROWS = ['QWERTYUIOP', 'ASDFGHJKL;', 'ZXCVBNM'];
+      var PRACTICE = 'ASDFGHJKL;'.split('');
+
+      var keyboardEl = document.getElementById('keyboard');
+      var fieldEl = document.getElementById('field');
+      var fallerEl = document.getElementById('faller');
+      var glyphEl = document.getElementById('glyph');
+      var overlayEl = document.getElementById('overlay');
+      var statusEl = document.getElementById('status');
+      var hudQ = document.getElementById('hud-q');
+      var hudTime = document.getElementById('hud-time');
+      var hudScore = document.getElementById('hud-score');
+      var speedEl = document.getElementById('speed');
+      var speedOut = document.getElementById('speed-out');
+      var rampEl = document.getElementById('ramp');
+      var lockedNote = document.getElementById('locked-note');
+      var btnStart = document.getElementById('btn-start');
+      var btnPause = document.getElementById('btn-pause');
+      var btnResume = document.getElementById('btn-resume');
+      var btnRestart = document.getElementById('btn-restart');
+
+      var keyEls = {};            // e.code -> 鍵盤按鍵元素
+      var charOf = {};            // e.code -> 字元
+      var held = new Set();       // 目前按住、尚未放開的實體按鍵（擋長按重複計分）
+      var badTimers = {};
+
+      var state = 'idle';         // idle 準備中 / running 進行中 / paused 暫停 / finished 結束
+      var phase = 'fall';         // fall 掉落中 / gap 題與題之間
+      var phaseT = 0;             // 目前階段已經過的秒數（暫停時不增加）
+      var fallDur = 12;           // 這一題的落地秒數
+      var gapDur = 0;
+      var lastDur = 0;
+      var qIndex = 0;             // 已經出過幾題
+      var hits = 0;
+      var landed = 0;
+      var wrong = 0;
+      var reactionSum = 0;
+      var target = null;
+      var prevTarget = null;
+      var lastFrame = 0;
+      var raf = 0;
+
+      /* 用網頁樣式畫出鍵盤，不使用外部圖片 */
+      function codeOf(ch) { return ch === ';' ? 'Semicolon' : 'Key' + ch; }
+
+      ROWS.forEach(function (letters, i) {
+        var row = document.createElement('div');
+        row.className = 'krow r' + (i + 1);
+        letters.split('').forEach(function (ch) {
+          var k = document.createElement('div');
+          k.className = 'key' + (PRACTICE.indexOf(ch) !== -1 ? ' play' : '');
+          k.textContent = ch;
+          keyEls[codeOf(ch)] = k;
+          charOf[codeOf(ch)] = ch;
+          row.appendChild(k);
+        });
+        keyboardEl.appendChild(row);
+      });
+      var space = document.createElement('div');
+      space.className = 'space';
+      keyboardEl.appendChild(space);
+
+      /* ---------- 小工具 ---------- */
+      function label(ch) { return ch === ';' ? '; （分號）' : ch; }
+
+      function setStatus(text, isBad) {
+        statusEl.textContent = text;
+        statusEl.className = 'status' + (isBad ? ' bad' : '');
+      }
+
+      function showScore(animate) {
+        hudScore.textContent = hits;
+        if (animate) {
+          hudScore.classList.remove('pop');
+          void hudScore.offsetWidth;
+          hudScore.classList.add('pop');
+        }
+      }
+
+      function showQuestion() { hudQ.textContent = qIndex + ' / ' + TOTAL; }
+      function showTime(sec) { hudTime.textContent = sec + ' 秒'; }
+
+      /* 目前這一題的落地秒數：設定值，若勾選漸進加速則依答對題數縮短 */
+      function currentFallSeconds() {
+        var base = Number(speedEl.value);
+        if (rampEl.checked) base -= Math.floor(hits / 3);
+        return Math.max(3, base);
+      }
+
+      function place(progress) {
+        var maxY = fieldEl.clientHeight - GROUND - fallerEl.offsetHeight;
+        fallerEl.style.transform = 'translate(-50%, ' + Math.max(0, progress * maxY) + 'px)';
+      }
+
+      /* ---------- 畫面狀態 ---------- */
+      function setOverlay(html) {
+        overlayEl.innerHTML = html;
+        overlayEl.hidden = !html;
+      }
+
+      function renderResult() {
+        var avg = hits ? (reactionSum / hits).toFixed(1) + ' 秒' : '—';
+        var msg = hits === TOTAL ? '全部答對，太厲害了！'
+                : hits >= 7 ? '表現不錯，再玩一次會更熟練。'
+                : '沒關係，可以把落地時間調慢一點，慢慢練習。';
+        setOverlay(
+          '<p class="big">本回合結束</p>' +
+          '<dl class="results">' +
+            '<div class="main"><dt>得分</dt><dd>' + hits + ' / ' + TOTAL + '</dd></div>' +
+            '<div><dt>答對</dt><dd>' + hits + ' 題</dd></div>' +
+            '<div><dt>落地</dt><dd>' + landed + ' 題</dd></div>' +
+            '<div><dt>按錯次數</dt><dd>' + wrong + ' 次</dd></div>' +
+            '<div><dt>答對平均用時</dt><dd>' + avg + '</dd></div>' +
+          '</dl>' +
+          '<p>' + msg + '</p>' +
+          '<p>按「開始」再玩一次，或按「重新開始」回到設定。</p>'
+        );
+      }
+
+      function updateUI() {
+        var playing = state === 'running' || state === 'paused';
+        btnStart.disabled = playing;
+        btnPause.disabled = state !== 'running';
+        btnResume.disabled = state !== 'paused';
+        btnRestart.disabled = state === 'idle';
+        speedEl.disabled = playing;
+        rampEl.disabled = playing;
+        lockedNote.hidden = !playing;
+
+        if (state === 'idle') {
+          setOverlay('<p class="big">準備好了嗎？</p><p>按「開始」，每回合 ' + TOTAL + ' 題。</p>');
+        } else if (state === 'paused') {
+          setOverlay('<p class="big">已暫停</p><p>按「繼續」回到遊戲。</p>');
+        } else if (state === 'finished') {
+          renderResult();
+        } else {
+          setOverlay('');
+        }
+      }
+
+      function resetCounters() {
+        qIndex = 0; hits = 0; landed = 0; wrong = 0; reactionSum = 0;
+        target = null; prevTarget = null; lastDur = 0;
+        phase = 'fall'; phaseT = 0;
+        fallerEl.hidden = true;
+        fallerEl.className = 'faller';
+        showQuestion();
+        showScore(false);
+        showTime(Number(speedEl.value));
+      }
+
+      /* ---------- 遊戲流程 ---------- */
+      function spawn() {
+        if (qIndex >= TOTAL) { finish(); return; }
+        qIndex += 1;
+
+        var pool = PRACTICE.filter(function (ch) { return ch !== prevTarget; });
+        target = pool[Math.floor(Math.random() * pool.length)];
+        prevTarget = target;
+
+        fallDur = currentFallSeconds();
+        phase = 'fall';
+        phaseT = 0;
+
+        glyphEl.textContent = target;
+        fallerEl.className = 'faller';
+        fallerEl.style.left = (10 + Math.random() * 80) + '%';
+        fallerEl.hidden = false;
+        place(0);
+
+        showQuestion();
+        showTime(fallDur);
+
+        var text = '第 ' + qIndex + ' 題：請按 ' + label(target) + '。';
+        if (lastDur && fallDur < lastDur) text = '加速了！現在每個字母 ' + fallDur + ' 秒落地。' + text;
+        setStatus(text);
+        lastDur = fallDur;
+      }
+
+      function hit() {
+        hits += 1;
+        reactionSum += phaseT;
+        showScore(true);
+        fallerEl.classList.add('hit');
+        target = null;
+        phase = 'gap';
+        phaseT = 0;
+        gapDur = GAP_HIT;
+        setStatus('答對了！+1 分');
+      }
+
+      function land() {
+        landed += 1;
+        place(1);
+        fallerEl.classList.add('miss');
+        setStatus(label(target) + ' 落地了，記錄一次。繼續下一題。');
+        target = null;
+        phase = 'gap';
+        phaseT = 0;
+        gapDur = GAP_MISS;
+      }
+
+      function wrongKey(code) {
+        wrong += 1;
+        var el = keyEls[code];
+        el.classList.add('bad');
+        clearTimeout(badTimers[code]);
+        badTimers[code] = setTimeout(function () { el.classList.remove('bad'); }, 300);
+        setStatus('按錯了，不扣分。請按 ' + label(target) + '。', true);
+      }
+
+      function finish() {
+        state = 'finished';
+        cancelAnimationFrame(raf);
+        fallerEl.hidden = true;
+        setStatus('本回合結束，答對 ' + hits + ' / ' + TOTAL + ' 題。');
+        updateUI();
+      }
+
+      function loop(now) {
+        if (state !== 'running') return;
+        var dt = Math.min((now - lastFrame) / 1000, 0.1);
+        lastFrame = now;
+        phaseT += dt;
+
+        if (phase === 'fall') {
+          if (phaseT >= fallDur) land();
+          else place(phaseT / fallDur);
+        } else if (phaseT >= gapDur) {
+          spawn();
+        }
+
+        if (state === 'running') raf = requestAnimationFrame(loop);
+      }
+
+      function blurFocus() {
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      }
+
+      function begin() {
+        cancelAnimationFrame(raf);
+        resetCounters();
+        state = 'running';
+        updateUI();
+        spawn();
+        lastFrame = performance.now();
+        raf = requestAnimationFrame(loop);
+        blurFocus();
+      }
+
+      function pause(reason) {
+        if (state !== 'running') return;
+        state = 'paused';
+        cancelAnimationFrame(raf);
+        updateUI();
+        setStatus(reason || '已暫停。按「繼續」回到遊戲。');
+      }
+
+      function resume() {
+        if (state !== 'paused') return;
+        state = 'running';
+        updateUI();
+        setStatus(target ? '第 ' + qIndex + ' 題：請按 ' + label(target) + '。' : '繼續遊戲。');
+        lastFrame = performance.now();
+        raf = requestAnimationFrame(loop);
+        blurFocus();
+      }
+
+      function restart() {
+        cancelAnimationFrame(raf);
+        state = 'idle';
+        resetCounters();
+        updateUI();
+        setStatus('已重新開始。調整設定後，按「開始」。');
+        blurFocus();
+      }
+
+      /* ---------- 事件 ---------- */
+      speedEl.addEventListener('input', function () {
+        speedOut.textContent = speedEl.value + ' 秒';
+        if (state === 'idle') showTime(Number(speedEl.value));
+      });
+
+      btnStart.addEventListener('click', begin);
+      btnPause.addEventListener('click', function () { pause(); });
+      btnResume.addEventListener('click', resume);
+      btnRestart.addEventListener('click', restart);
+
+      /* 用 e.code 判斷實體按鍵，不受輸入法影響 */
+      window.addEventListener('keydown', function (e) {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        var code = e.code;
+        if (!keyEls[code]) return;
+
+        if (state === 'running') e.preventDefault();
+
+        // 長按：瀏覽器會連續送出 keydown，這裡一律忽略，直到放開為止
+        if (e.repeat || held.has(code)) return;
+        held.add(code);
+        keyEls[code].classList.add('down');
+
+        if (state !== 'running' || phase !== 'fall') return;
+
+        if (charOf[code] === target) hit();
+        else wrongKey(code);
+      });
+
+      window.addEventListener('keyup', function (e) {
+        var code = e.code;
+        if (!keyEls[code]) return;
+        held.delete(code);
+        keyEls[code].classList.remove('down');
+      });
+
+      function releaseAll() {
+        held.clear();
+        Object.keys(keyEls).forEach(function (c) { keyEls[c].classList.remove('down'); });
+      }
+
+      // 離開遊戲視窗或切換分頁：自動暫停，並清掉按鍵狀態以免卡住
+      window.addEventListener('blur', function () {
+        releaseAll();
+        pause('你離開了遊戲視窗，已自動暫停。按「繼續」回到遊戲。');
+      });
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+          releaseAll();
+          pause('你離開了遊戲視窗，已自動暫停。按「繼續」回到遊戲。');
+        }
+      });
+
+      // 每次開啟網頁都回到預設值：落地 12 秒、漸進加速不勾選
+      speedEl.value = 12;
+      rampEl.checked = false;
+      speedOut.textContent = speedEl.value + ' 秒';
+      resetCounters();
+      updateUI();
+    })();
+  </script>
+</body>
+</html>
